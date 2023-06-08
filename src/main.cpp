@@ -10,7 +10,7 @@ SFE_UBLOX_GPS myGPS;
 char nmeaBuffer[100];
 MicroNMEA nmea(nmeaBuffer, sizeof(nmeaBuffer));
 
-void setup()
+void setup() 
 {
     initBoard();
     // When the power is turned on, a delay is required.
