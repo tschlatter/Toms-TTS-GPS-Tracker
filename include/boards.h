@@ -31,8 +31,6 @@ XPowersLibInterface *PMU = NULL;
 #define PMU_WIRE_PORT   Wire
 #endif
 
-
-
 bool pmuInterrupt;
 
 void setPmuFlag()
@@ -46,7 +44,7 @@ bool initPMU()
     if (!PMU) {
         PMU = new XPowersAXP2101(PMU_WIRE_PORT);
         if (!PMU->init()) {
-            Serial.println("Warning: Failed to find AXP2101 power management");
+            Serial.println("Warning: AXP2101 power management not found, searching for AXP192");
             delete PMU;
             PMU = NULL;
         } else {
@@ -69,7 +67,7 @@ bool initPMU()
         return false;
     }
 
-    PMU->setChargingLedMode(XPOWERS_CHG_LED_BLINK_1HZ);
+    PMU->setChargingLedMode(XPOWERS_CHG_LED_BLINK_4HZ);
 
     pinMode(PMU_IRQ, INPUT_PULLUP);
     attachInterrupt(PMU_IRQ, setPmuFlag, FALLING);
@@ -112,6 +110,7 @@ bool initPMU()
     } else if (PMU->getChipModel() == XPOWERS_AXP2101) {
 
 #if defined(CONFIG_IDF_TARGET_ESP32)
+        Serial.println("CONFIG_IDF_TARGET_ESP32 is defined");
         //Unuse power channel
         PMU->disablePowerOutput(XPOWERS_DCDC2);
         PMU->disablePowerOutput(XPOWERS_DCDC3);
@@ -230,13 +229,13 @@ bool initPMU()
 
     Serial.printf("=========================================\n");
     if (PMU->isChannelAvailable(XPOWERS_DCDC1)) {
-        Serial.printf("DC1  : %s   Voltage: %04u mV \n",  PMU->isPowerChannelEnable(XPOWERS_DCDC1)  ? "+" : "-",  PMU->getPowerChannelVoltage(XPOWERS_DCDC1));
+        Serial.printf("DC1  : %s   Voltage: %04u mV (OLED) \n",  PMU->isPowerChannelEnable(XPOWERS_DCDC1)  ? "+" : "-",  PMU->getPowerChannelVoltage(XPOWERS_DCDC1));
     }
     if (PMU->isChannelAvailable(XPOWERS_DCDC2)) {
-        Serial.printf("DC2  : %s   Voltage: %04u mV \n",  PMU->isPowerChannelEnable(XPOWERS_DCDC2)  ? "+" : "-",  PMU->getPowerChannelVoltage(XPOWERS_DCDC2));
+        Serial.printf("DC2  : %s   Voltage: %04u mV (disabled) \n",  PMU->isPowerChannelEnable(XPOWERS_DCDC2)  ? "+" : "-",  PMU->getPowerChannelVoltage(XPOWERS_DCDC2));
     }
     if (PMU->isChannelAvailable(XPOWERS_DCDC3)) {
-        Serial.printf("DC3  : %s   Voltage: %04u mV \n",  PMU->isPowerChannelEnable(XPOWERS_DCDC3)  ? "+" : "-",  PMU->getPowerChannelVoltage(XPOWERS_DCDC3));
+        Serial.printf("DC3  : %s   Voltage: %04u mV (ESP32) \n",  PMU->isPowerChannelEnable(XPOWERS_DCDC3)  ? "+" : "-",  PMU->getPowerChannelVoltage(XPOWERS_DCDC3));
     }
     if (PMU->isChannelAvailable(XPOWERS_DCDC4)) {
         Serial.printf("DC4  : %s   Voltage: %04u mV \n",  PMU->isPowerChannelEnable(XPOWERS_DCDC4)  ? "+" : "-",  PMU->getPowerChannelVoltage(XPOWERS_DCDC4));
@@ -245,10 +244,10 @@ bool initPMU()
         Serial.printf("DC5  : %s   Voltage: %04u mV \n",  PMU->isPowerChannelEnable(XPOWERS_DCDC5)  ? "+" : "-",  PMU->getPowerChannelVoltage(XPOWERS_DCDC5));
     }
     if (PMU->isChannelAvailable(XPOWERS_LDO2)) {
-        Serial.printf("LDO2 : %s   Voltage: %04u mV \n",  PMU->isPowerChannelEnable(XPOWERS_LDO2)   ? "+" : "-",  PMU->getPowerChannelVoltage(XPOWERS_LDO2));
+        Serial.printf("LDO2 : %s   Voltage: %04u mV (Lora)\n",  PMU->isPowerChannelEnable(XPOWERS_LDO2)   ? "+" : "-",  PMU->getPowerChannelVoltage(XPOWERS_LDO2));
     }
     if (PMU->isChannelAvailable(XPOWERS_LDO3)) {
-        Serial.printf("LDO3 : %s   Voltage: %04u mV \n",  PMU->isPowerChannelEnable(XPOWERS_LDO3)   ? "+" : "-",  PMU->getPowerChannelVoltage(XPOWERS_LDO3));
+        Serial.printf("LDO3 : %s   Voltage: %04u mV (GPS) \n",  PMU->isPowerChannelEnable(XPOWERS_LDO3)   ? "+" : "-",  PMU->getPowerChannelVoltage(XPOWERS_LDO3));
     }
     if (PMU->isChannelAvailable(XPOWERS_ALDO1)) {
         Serial.printf("ALDO1: %s   Voltage: %04u mV \n",  PMU->isPowerChannelEnable(XPOWERS_ALDO1)  ? "+" : "-",  PMU->getPowerChannelVoltage(XPOWERS_ALDO1));
@@ -287,6 +286,26 @@ bool initPMU()
     default:
         break;
     }
+
+    // TS
+    // Set constant current charge current limit
+    PMU->setChargerConstantCurr(XPOWERS_AXP192_CHG_CUR_280MA);
+    // Set charge cut-off voltage
+    PMU->setChargeTargetVoltage(XPOWERS_AXP192_CHG_VOL_4V2);
+
+    Serial.print("isCharging:"); Serial.println(PMU->isCharging() ? "YES" : "NO");
+    Serial.print("isDischarge:"); Serial.println(PMU->isDischarge() ? "YES" : "NO");
+    Serial.print("isVbusIn:"); Serial.println(PMU->isVbusIn() ? "YES" : "NO");
+    Serial.print("getBattVoltage:"); Serial.print(PMU->getBattVoltage()); Serial.println("mV");
+    Serial.print("getVbusVoltage:"); Serial.print(PMU->getVbusVoltage()); Serial.println("mV");
+    Serial.print("getSystemVoltage:"); Serial.print(PMU->getSystemVoltage()); Serial.println("mV");
+   
+    if (PMU->isBatteryConnect()) {
+        Serial.print("getBatteryPercent:"); Serial.print(PMU->getBatteryPercent()); Serial.println("%");
+    }
+
+    Serial.println();
+    // End TS
 
     return true;
 }
@@ -418,5 +437,7 @@ void initBoard()
 
 
 }
+
+
 
 

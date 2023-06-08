@@ -16,7 +16,7 @@ void setup()
     // When the power is turned on, a delay is required.
     delay(1500);
 
-    Serial.println("SparkFun Ublox Example");
+    Serial.println("Tom's GPS Tracker");
 
     if (myGPS.begin(Serial1) == false) {
         Serial.println(F("Ublox GPS not detected . Please check wiring. Freezing."));
