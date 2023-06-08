@@ -31,9 +31,11 @@ void loop()
     if (nmea.isValid() == true) {
         long latitude_mdeg = nmea.getLatitude();
         long longitude_mdeg = nmea.getLongitude();
+        long numSatellites = nmea.getNumSatellites();
+
 
         Serial.print("Num. satellites: ");
-        Serial.println(nmea.getNumSatellites());
+        Serial.println(numSatellites);
         Serial.print("Latitude (deg): ");
         Serial.println(latitude_mdeg / 1000000., 6);
         Serial.print("Longitude (deg): ");
