@@ -1,14 +1,41 @@
 #include <Arduino.h>
 
 #include "boards.h"
-#include "SparkFun_Ublox_Arduino_Library.h"
+#include <SparkFun_Ublox_Arduino_Library.h>
+#include <MicroNMEA.h> //https://github.com/stevemarple/MicroNMEA
+#include <RadioLib.h>
 
 SFE_UBLOX_GPS myGPS;
 
-#include <MicroNMEA.h> //https://github.com/stevemarple/MicroNMEA
-
 char nmeaBuffer[100];
 MicroNMEA nmea(nmeaBuffer, sizeof(nmeaBuffer));
+
+#ifdef RADIO_USING_SX1262
+RADIO_TYPE      radio = new Module(RADIO_CS_PIN, RADIO_DIO1_PIN, RADIO_RST_PIN, RADIO_BUSY_PIN);
+#else
+RADIO_TYPE      radio = new Module(RADIO_CS_PIN, RADIO_DIO0_PIN, RADIO_RST_PIN, RADIO_BUSY_PIN);
+#endif
+
+// flag to indicate that a packet was received
+bool            receivedFlag = false;
+// disable interrupt when it's not needed
+bool            enableInterrupt = true;
+
+// this function is called when a complete packet
+// is received by the module
+// IMPORTANT: this function MUST be 'void' type
+//            and MUST NOT have any arguments!
+void setFlag(void)
+{
+    // check if the interrupt is enabled
+    if (!enableInterrupt) {
+        return;
+    }
+    // we got a packet, set the flag
+    receivedFlag = true;
+}
+
+char            buff[5][256];
 
 long lastTime = 0; //Simple local timer. Limits amount if I2C traffic to Ublox module.
 
@@ -20,6 +47,7 @@ void setup()
 
     Serial.println("Tom's GPS Tracker");
 
+    // GPS
     if (myGPS.begin(Serial1) == false) {
         Serial.println(F("Ublox GPS not detected . Please check wiring. Freezing."));
         while (1);
@@ -28,11 +56,38 @@ void setup()
     myGPS.setI2COutput(COM_TYPE_UBX); //Set the I2C port to output UBX only (turn off NMEA noise)
     myGPS.saveConfiguration(); //Save the current settings to flash and BBR
 
+    // LoRa
+    Serial.print(F("[Radio] Initializing ... "));
+#ifndef LoRa_frequency
+    int state = radio.begin(868.0);
+#else
+    int state = radio.begin(LoRa_frequency);
+#endif
+
+    if (state == RADIOLIB_ERR_NONE) {
+        Serial.println(F("success!"));
+    } else {
+        Serial.print(F("failed, code "));
+        Serial.println(state);
+        while (true);
+    }
+
+    // set the function that will be called
+    // when new packet is received
+#if defined(RADIO_USING_SX1262)
+    radio.setDio1Action(setFlag);
+#elif defined(RADIO_USING_SX1268)
+    radio.setDio1Action(setFlag);
+#else
+    radio.setDio0Action(setFlag, RISING);
+#endif
+
+
 }
 
 void loop()
 {
-  if (millis() - lastTime > 1000)
+  if (millis() - lastTime > 3000)
     {
     lastTime = millis(); //Update the timer
     
@@ -78,6 +133,8 @@ void loop()
         Serial.println(nmea.getNumSatellites());
     }
   }
+
+
 }
 
 // This function gets called from the SparkFun Ublox Arduino Library

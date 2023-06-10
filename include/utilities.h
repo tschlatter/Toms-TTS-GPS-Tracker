@@ -9,6 +9,24 @@
 // #define LILYGO_T3_V1_6
 // #define LILYGO_T3_V2_0
 // #define LILYGO_T3_S3_V1_0
+
+/*
+Replace the model according to the actual situation
+RADIO_TYPE option:
+            - SX1278
+            - SX1276
+            - SX1262
+            - SX1268
+*/
+#define RADIO_TYPE      SX1276
+
+//If you want to use SX1262, cancel this comment
+// #define RADIO_USING_SX1262
+
+//If you want to use SX1268, cancel this comment
+// #define RADIO_USING_SX1268
+
+
 /*
 * The default program uses 868MHz,
 * if you need to change it,
